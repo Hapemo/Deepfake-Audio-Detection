@@ -133,6 +133,6 @@ dmypy.json
 .pyre/
 
 # folder contents
-.data/
-.output/
+data/
+output/
 
