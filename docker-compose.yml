@@ -11,6 +11,7 @@ services:
       - ./data/:/app/data
       - ./notebooks/:/app/notebooks
       - ./output/:/app/output
+      - ./pyfiles/:/app/pyfiles
     deploy:
       resources:
         reservations:
