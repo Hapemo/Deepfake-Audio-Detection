@@ -12,3 +12,12 @@ To launch jupyter notebook, on docker desktop, navigate to the container logs to
 The starting directory in the jupyter notebook will be ./notebook/ from here.
 
 
+# Others
+There is a 'others' folder in the current directory. It contains files that does other operations that might be useful. 
+
+
+## .wslconfig
+This file is used to limit the amount of memory and cpu WSL2 use on windows. Change the config inside the file to your need, and copy the file into your user directory. To ensure it's the correct directory you pasted in, it might contain folders like '.vscode', 'Desktop', 'Documents', 'Downloads', '.docker'.
+
+
+
