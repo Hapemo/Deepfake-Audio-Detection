@@ -9,7 +9,7 @@ This project is tested on windows, but it should work on other operating systems
 
 You might want to consider uploading this directory onto github as a source control, including the data and output folder in gitignore since they would likely take up too much space.
 
-After building, you can always launch the container from docker desktop or using docker commands.
+After building, you have to delete the 'sample' from sample.env, so it becomes '.env'. You can always launch the container from docker desktop or using docker commands.
 To launch jupyter notebook, on docker desktop, navigate to the container logs to find the jupyter notebook web service url. The host is set to 127.0.0.1 and the port is 8888, but the token is randomized, so the url you need to find would look something like this "http://127.0.0.1:8888/lab?token=df29665c0c8e23d378b1d2f3ad40dea20f0301e79bdbfdee"
 
 The starting directory in the jupyter notebook will be ./notebook/ from here.
