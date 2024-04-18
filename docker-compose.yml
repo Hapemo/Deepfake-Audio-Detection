@@ -1,8 +1,8 @@
 version: '1'
-name: sit-tensorflow-gpu
+name: sit-assist
 services:
-  tensorflow-jupyter-gpu:
-    container_name: tensorflow-jupyter-gpu
+  deepfake-audio-detection:
+    container_name: deepfake-audio-detection
     build:
       context: .
       dockerfile: ./docker/Dockerfile
@@ -12,6 +12,9 @@ services:
       - ./notebooks/:/app/notebooks
       - ./output/:/app/output
       - ./pyfiles/:/app/pyfiles
+      - ./config/:/app/config
+      - ./models/:/app/models
+      - ./exp_result/:/app/exp_result
     deploy:
       resources:
         reservations:

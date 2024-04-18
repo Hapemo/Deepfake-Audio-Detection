@@ -1,7 +1,7 @@
 
 # TensorFlow with GPU acceleration using Windows, Docker and WSL2
 
-This project is built with reference to pendragon AI's example project. It is primary used to get the necessary component required for tensorflow gpu project with jupyter notebook. To find out more about pendragon, refer to the other readme for pendragon on the same directory.
+This project is built with reference to pendragon AI's example project, modified to use the ASSIST machine learning model. Pendragon is used to get the necessary docker component required for setting up a docker image and container with jupyter notebook. ASSIST is the main machine learning model used for this project. To find out more about pendragon or ASSIST, refer to the other readme on the same directory as this readme.
 
 # Get Started
 
@@ -24,3 +24,7 @@ This file is used to limit the amount of memory and cpu WSL2 use on windows. Cha
 
 
 
+
+## Archive
+This command allows you to copy any file or folder in a docker container to your local machine
+docker cp <containerId>:/file/path/within/container /host/path/target

@@ -1,7 +1,7 @@
-matplotlib
+torch>=1.6.0
+torchcontrib
 numpy
-pandas
-scikit-learn
-tensorflow
-tensorboard
+soundfile
 jupyterlab
+jupyter_contrib_nbextensions
+tensorboard
