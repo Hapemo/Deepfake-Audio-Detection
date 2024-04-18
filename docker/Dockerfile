@@ -1,4 +1,4 @@
-FROM pytorch/pytorch:1.6.0-cuda10.1-cudnn7-runtime
+FROM pytorch/pytorch:latest
 
 RUN apt-get update
 RUN pip install --upgrade pip
