@@ -29,8 +29,10 @@ from utils import create_optimizer, seed_worker, set_seed, str_to_bool
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 
+debugPrint = True
 
 def main(args: argparse.Namespace) -> None:
+    print(args)
     """
     Main function.
     Trains, validates, and evaluates the ASVspoof detection model.
@@ -63,6 +65,18 @@ def main(args: argparse.Namespace) -> None:
         "ASVspoof2019_{}_cm_protocols/{}.cm.eval.trl.txt".format(
             track, prefix_2019))
 
+    if debugPrint:
+        print("output_dir")
+        print(output_dir)
+        print("prefix_2019")
+        print(prefix_2019)
+        print("database_path")
+        print(database_path)
+        print("dev_trial_path")
+        print(dev_trial_path)
+        print("eval_trial_path")
+        print(eval_trial_path)
+
     # define model related paths
     model_tag = "{}_{}_ep{}_bs{}".format(
         track,
@@ -77,6 +91,16 @@ def main(args: argparse.Namespace) -> None:
     os.makedirs(model_save_path, exist_ok=True)
     copy(args.config, model_tag / "config.conf")
 
+    if debugPrint:
+        print("model_tag")
+        print(model_tag)
+        print("model_save_path")
+        print(model_save_path)
+        print("eval_score_path")
+        print(eval_score_path)
+        print("writer")
+        print(writer)
+
     # set device
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print("Device: {}".format(device))
@@ -86,9 +110,21 @@ def main(args: argparse.Namespace) -> None:
     # define model architecture
     model = get_model(model_config, device)
 
+    if debugPrint:
+        print("model")
+        print(model)
+
     # define dataloaders
     trn_loader, dev_loader, eval_loader = get_loader(
         database_path, args.seed, config)
+
+    if debugPrint:
+        print("trn_loader")
+        print(trn_loader)
+        print("dev_loader")
+        print(dev_loader)
+        print("eval_loader")
+        print(eval_loader)
 
     # evaluates pretrained model and exit script
     if args.eval:
@@ -114,6 +150,16 @@ def main(args: argparse.Namespace) -> None:
     optimizer, scheduler = create_optimizer(model.parameters(), optim_config)
     optimizer_swa = SWA(optimizer)
 
+    if debugPrint:
+        print("optim_config")
+        print(optim_config)
+        print("optimizer")
+        print(optimizer)
+        print("scheduler")
+        print(scheduler)
+        print("optimizer_swa")
+        print(optimizer_swa)
+
     best_dev_eer = 1.
     best_eval_eer = 100.
     best_dev_tdcf = 0.05
@@ -126,18 +172,28 @@ def main(args: argparse.Namespace) -> None:
     metric_path = model_tag / "metrics"
     os.makedirs(metric_path, exist_ok=True)
 
+    if debugPrint:
+        print("f_log")
+        print(f_log)
+        print("metric_path")
+        print(metric_path)
+
     # Training
     for epoch in range(config["num_epochs"]):
         print("Start training epoch{:03d}".format(epoch))
         running_loss = train_epoch(trn_loader, model, optimizer, device,
                                    scheduler, config)
+        if debugPrint:
+            print("running_loss")
+            print(running_loss)
+            
         produce_evaluation_file(dev_loader, model, device,
                                 metric_path/"dev_score.txt", dev_trial_path)
         dev_eer, dev_tdcf = calculate_tDCF_EER(
             cm_scores_file=metric_path/"dev_score.txt",
             asv_score_file=database_path/config["asv_score_path"],
             output_file=metric_path/"dev_t-DCF_EER_{}epo.txt".format(epoch),
-            printout=False)
+            printout=True)
         print("DONE.\nLoss:{:.5f}, dev_eer: {:.3f}, dev_tdcf:{:.5f}".format(
             running_loss, dev_eer, dev_tdcf))
         writer.add_scalar("loss", running_loss, epoch)
@@ -294,27 +350,41 @@ def produce_evaluation_file(
     device: torch.device,
     save_path: str,
     trial_path: str) -> None:
+    if debugPrint:
+        print("save_path")
+        print(save_path)
+        print("trial_path")
+        print(trial_path)
+
     """Perform evaluation and save the score to a file"""
     model.eval()
     with open(trial_path, "r") as f_trl:
         trial_lines = f_trl.readlines()
     fname_list = []
     score_list = []
-    for batch_x, utt_id in data_loader:
+    for batch_x, utt_id in data_loader: # running through a loop with a new batch everytime
         batch_x = batch_x.to(device)
         with torch.no_grad():
-            _, batch_out = model(batch_x)
-            batch_score = (batch_out[:, 1]).data.cpu().numpy().ravel()
+            _, batch_out = model(batch_x) # Inference with new batch every time 
+            batch_score = (batch_out[:, 1]).data.cpu().numpy().ravel() # Calculate the score of a batch 
         # add outputs
         fname_list.extend(utt_id)
-        score_list.extend(batch_score.tolist())
+        score_list.extend(batch_score.tolist()) # Append the scores of a batch to the master score list
+
+    if debugPrint:
+        print("trial_lines")
+        print(trial_lines)
+        print("fname_list")
+        print(fname_list)
+        print("score_list")
+        print(score_list)
 
     assert len(trial_lines) == len(fname_list) == len(score_list)
     with open(save_path, "w") as fh:
-        for fn, sco, trl in zip(fname_list, score_list, trial_lines):
+        for fn, sco, trl in zip(fname_list, score_list, trial_lines): # Zipping the name, score and trial line and loop through them
             _, utt_id, _, src, key = trl.strip().split(' ')
-            assert fn == utt_id
-            fh.write("{} {} {} {}\n".format(utt_id, src, key, sco))
+            assert fn == utt_id # Ensuring the data info from trial lines matches the fname list
+            fh.write("{} {} {} {}\n".format(utt_id, src, key, sco)) # Saving the data to another file, cumulative of the evaluation result in the form of (LA_D_1047731 - bonafide -0.00691329687833786)
     print("Scores saved to {}".format(save_path))
 
 
@@ -329,20 +399,20 @@ def train_epoch(
     running_loss = 0
     num_total = 0.0
     ii = 0
-    model.train()
+    model.train() # Setting model to train mode
 
     # set objective (Loss) functions
     weight = torch.FloatTensor([0.1, 0.9]).to(device)
     criterion = nn.CrossEntropyLoss(weight=weight)
-    for batch_x, batch_y in trn_loader:
+    for batch_x, batch_y in trn_loader: # Getting each batch of data for training
         batch_size = batch_x.size(0)
         num_total += batch_size
         ii += 1
         batch_x = batch_x.to(device)
         batch_y = batch_y.view(-1).type(torch.int64).to(device)
-        _, batch_out = model(batch_x, Freq_aug=str_to_bool(config["freq_aug"]))
-        batch_loss = criterion(batch_out, batch_y)
-        running_loss += batch_loss.item() * batch_size
+        _, batch_out = model(batch_x, Freq_aug=str_to_bool(config["freq_aug"])) # Doing inference with model
+        batch_loss = criterion(batch_out, batch_y) # Calculating batch loss
+        running_loss += batch_loss.item() * batch_size # Accumulating batch losses
         optim.zero_grad()
         batch_loss.backward()
         optim.step()
