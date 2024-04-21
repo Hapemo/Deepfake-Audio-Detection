@@ -25,6 +25,7 @@ from torchcontrib.optim import SWA
 from data_utils import (Dataset_ASVspoof2019_train,
                         Dataset_ASVspoof2019_devNeval, genSpoof_list)
 from evaluation import calculate_tDCF_EER
+from evaluation import calculate_EER
 from utils import create_optimizer, seed_worker, set_seed, str_to_bool
 
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -134,14 +135,14 @@ def main(args: argparse.Namespace) -> None:
         print("Start evaluation...")
         produce_evaluation_file(eval_loader, model, device,
                                 eval_score_path, eval_trial_path)
-        calculate_tDCF_EER(cm_scores_file=eval_score_path,
-                           asv_score_file=database_path /
-                           config["asv_score_path"],
+        calculate_EER(cm_scores_file=eval_score_path,
+                        #    asv_score_file=database_path /
+                        #    config["asv_score_path"],
                            output_file=model_tag / "t-DCF_EER.txt")
         print("DONE.")
-        eval_eer, eval_tdcf = calculate_tDCF_EER(
+        eval_eer = calculate_EER(
             cm_scores_file=eval_score_path,
-            asv_score_file=database_path / config["asv_score_path"],
+            # asv_score_file=database_path / config["asv_score_path"],
             output_file=model_tag/"loaded_model_t-DCF_EER.txt")
         sys.exit(0)
 
@@ -162,8 +163,8 @@ def main(args: argparse.Namespace) -> None:
 
     best_dev_eer = 1.
     best_eval_eer = 100.
-    best_dev_tdcf = 0.05
-    best_eval_tdcf = 1.
+    # best_dev_tdcf = 0.05
+    # best_eval_tdcf = 1.
     n_swa_update = 0  # number of snapshots of model to use in SWA
     f_log = open(model_tag / "metric_log.txt", "a")
     f_log.write("=" * 5 + "\n")
@@ -189,18 +190,18 @@ def main(args: argparse.Namespace) -> None:
             
         produce_evaluation_file(dev_loader, model, device,
                                 metric_path/"dev_score.txt", dev_trial_path)
-        dev_eer, dev_tdcf = calculate_tDCF_EER(
+        dev_eer = calculate_EER(
             cm_scores_file=metric_path/"dev_score.txt",
-            asv_score_file=database_path/config["asv_score_path"],
+            # asv_score_file=database_path/config["asv_score_path"],
             output_file=metric_path/"dev_t-DCF_EER_{}epo.txt".format(epoch),
-            printout=True)
-        print("DONE.\nLoss:{:.5f}, dev_eer: {:.3f}, dev_tdcf:{:.5f}".format(
-            running_loss, dev_eer, dev_tdcf))
+            printout=False)
+        print("DONE.\nLoss:{:.5f}, dev_eer: {:.3f}".format(
+            running_loss, dev_eer))
         writer.add_scalar("loss", running_loss, epoch)
         writer.add_scalar("dev_eer", dev_eer, epoch)
-        writer.add_scalar("dev_tdcf", dev_tdcf, epoch)
+        # writer.add_scalar("dev_tdcf", dev_tdcf, epoch)
 
-        best_dev_tdcf = min(dev_tdcf, best_dev_tdcf)
+        # best_dev_tdcf = min(dev_tdcf, best_dev_tdcf)
         if best_dev_eer >= dev_eer:
             print("best model find at epoch", epoch)
             best_dev_eer = dev_eer
@@ -211,9 +212,9 @@ def main(args: argparse.Namespace) -> None:
             if str_to_bool(config["eval_all_best"]):
                 produce_evaluation_file(eval_loader, model, device,
                                         eval_score_path, eval_trial_path)
-                eval_eer, eval_tdcf = calculate_tDCF_EER(
+                eval_eer = calculate_EER(
                     cm_scores_file=eval_score_path,
-                    asv_score_file=database_path / config["asv_score_path"],
+                    # asv_score_file=database_path / config["asv_score_path"],
                     output_file=metric_path /
                     "t-DCF_EER_{:03d}epo.txt".format(epoch))
 
@@ -221,11 +222,11 @@ def main(args: argparse.Namespace) -> None:
                 if eval_eer < best_eval_eer:
                     log_text += "best eer, {:.4f}%".format(eval_eer)
                     best_eval_eer = eval_eer
-                if eval_tdcf < best_eval_tdcf:
-                    log_text += "best tdcf, {:.4f}".format(eval_tdcf)
-                    best_eval_tdcf = eval_tdcf
                     torch.save(model.state_dict(),
                                model_save_path / "best.pth")
+                # if eval_tdcf < best_eval_tdcf:
+                #     log_text += "best tdcf, {:.4f}".format(eval_tdcf)
+                #     best_eval_tdcf = eval_tdcf
                 if len(log_text) > 0:
                     print(log_text)
                     f_log.write(log_text + "\n")
@@ -234,7 +235,7 @@ def main(args: argparse.Namespace) -> None:
             optimizer_swa.update_swa()
             n_swa_update += 1
         writer.add_scalar("best_dev_eer", best_dev_eer, epoch)
-        writer.add_scalar("best_dev_tdcf", best_dev_tdcf, epoch)
+        # writer.add_scalar("best_dev_tdcf", best_dev_tdcf, epoch)
 
     print("Start final evaluation")
     epoch += 1
@@ -243,13 +244,13 @@ def main(args: argparse.Namespace) -> None:
         optimizer_swa.bn_update(trn_loader, model, device=device)
     produce_evaluation_file(eval_loader, model, device, eval_score_path,
                             eval_trial_path)
-    eval_eer, eval_tdcf = calculate_tDCF_EER(cm_scores_file=eval_score_path,
-                                             asv_score_file=database_path /
-                                             config["asv_score_path"],
+    eval_eer = calculate_EER(cm_scores_file=eval_score_path,
+                                            #  asv_score_file=database_path /
+                                            #  config["asv_score_path"],
                                              output_file=model_tag / "t-DCF_EER.txt")
     f_log = open(model_tag / "metric_log.txt", "a")
     f_log.write("=" * 5 + "\n")
-    f_log.write("EER: {:.3f}, min t-DCF: {:.5f}".format(eval_eer, eval_tdcf))
+    f_log.write("EER: {:.3f}".format(eval_eer))
     f_log.close()
 
     torch.save(model.state_dict(),
@@ -257,12 +258,9 @@ def main(args: argparse.Namespace) -> None:
 
     if eval_eer <= best_eval_eer:
         best_eval_eer = eval_eer
-    if eval_tdcf <= best_eval_tdcf:
-        best_eval_tdcf = eval_tdcf
         torch.save(model.state_dict(),
-                   model_save_path / "best.pth")
-    print("Exp FIN. EER: {:.3f}, min t-DCF: {:.5f}".format(
-        best_eval_eer, best_eval_tdcf))
+            model_save_path / "best.pth")
+    print("Exp FIN. EER: {:.3f}".format(best_eval_eer))
 
 
 def get_model(model_config: Dict, device: torch.device):
