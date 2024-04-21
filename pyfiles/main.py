@@ -30,7 +30,7 @@ from utils import create_optimizer, seed_worker, set_seed, str_to_bool
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 
-debugPrint = True
+debugPrint = False
 
 def main(args: argparse.Namespace) -> None:
     print(args)
