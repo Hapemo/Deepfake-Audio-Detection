@@ -182,35 +182,36 @@ def main(args: argparse.Namespace) -> None:
     # Training
     for epoch in range(config["num_epochs"]):
         print("Start training epoch{:03d}".format(epoch))
-        running_loss = train_epoch(trn_loader, model, optimizer, device,
+        running_loss = train_epoch(trn_loader, model, optimizer, device,                    # Train the model for one epoch
                                    scheduler, config)
         if debugPrint:
             print("running_loss")
             print(running_loss)
-            
-        produce_evaluation_file(dev_loader, model, device,
+        
+        
+        produce_evaluation_file(dev_loader, model, device,                                  # Evaluate the model and save it's evaluation result to dev_score.txt on local device
                                 metric_path/"dev_score.txt", dev_trial_path)
-        dev_eer = calculate_EER(
+        dev_eer = calculate_EER(                                                            # Calculate the EER based on saved result from dev_score.txt
             cm_scores_file=metric_path/"dev_score.txt",
             # asv_score_file=database_path/config["asv_score_path"],
             output_file=metric_path/"dev_t-DCF_EER_{}epo.txt".format(epoch),
             printout=False)
-        print("DONE.\nLoss:{:.5f}, dev_eer: {:.3f}".format(
+        print("DONE.\nLoss:{:.5f}, dev_eer: {:.3f}".format(                                 # Print current epoch EER and running loss
             running_loss, dev_eer))
-        writer.add_scalar("loss", running_loss, epoch)
+        writer.add_scalar("loss", running_loss, epoch)                                      # Saving current epoch EER and running loss to tfevents
         writer.add_scalar("dev_eer", dev_eer, epoch)
         # writer.add_scalar("dev_tdcf", dev_tdcf, epoch)
 
         # best_dev_tdcf = min(dev_tdcf, best_dev_tdcf)
-        if best_dev_eer >= dev_eer:
+        if best_dev_eer >= dev_eer:                                                         # Condition for if the best development EER was found
             print("best model find at epoch", epoch)
             best_dev_eer = dev_eer
-            torch.save(model.state_dict(),
+            torch.save(model.state_dict(),                                                  # Save the model for the best development EER to local device
                        model_save_path / "epoch_{}_{:03.3f}.pth".format(epoch, dev_eer))
 
             # do evaluation whenever best model is renewed
             if str_to_bool(config["eval_all_best"]):
-                produce_evaluation_file(eval_loader, model, device,
+                produce_evaluation_file(eval_loader, model, device,                         # Evaluate the latest best model found based on evaluation dataset
                                         eval_score_path, eval_trial_path)
                 eval_eer = calculate_EER(
                     cm_scores_file=eval_score_path,
@@ -219,7 +220,7 @@ def main(args: argparse.Namespace) -> None:
                     "t-DCF_EER_{:03d}epo.txt".format(epoch))
 
                 log_text = "epoch{:03d}, ".format(epoch)
-                if eval_eer < best_eval_eer:
+                if eval_eer < best_eval_eer:                                                # If the current model achieve best evaluation, update the best model
                     log_text += "best eer, {:.4f}%".format(eval_eer)
                     best_eval_eer = eval_eer
                     torch.save(model.state_dict(),
