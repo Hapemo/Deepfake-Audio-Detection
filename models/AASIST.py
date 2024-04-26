@@ -364,7 +364,8 @@ class CONV(nn.Module):
         if groups > 1:
             raise ValueError('SincConv does not support groups.')
 
-        NFFT = 512
+        # Preparing a range of values for f1 and f2
+        NFFT = 512 # Non-Uniform Fast Fourier Transformation
         f = int(self.sample_rate / 2) * np.linspace(0, 1, int(NFFT / 2) + 1)
         fmel = self.to_mel(f)
         fmelmax = np.max(fmel)
@@ -372,10 +373,11 @@ class CONV(nn.Module):
         filbandwidthsmel = np.linspace(fmelmin, fmelmax, self.out_channels + 1)
         filbandwidthsf = self.to_hz(filbandwidthsmel)
 
+        # Preparing the bandpass filter
         self.mel = filbandwidthsf
         self.hsupp = torch.arange(-(self.kernel_size - 1) / 2,
                                   (self.kernel_size - 1) / 2 + 1)
-        self.band_pass = torch.zeros(self.out_channels, self.kernel_size)
+        self.band_pass = torch.zeros(self.out_channels, self.kernel_size) # A tensor of size (out_channels, kernel_size)
         for i in range(len(self.mel) - 1):
             fmin = self.mel[i]
             fmax = self.mel[i + 1]
@@ -383,11 +385,11 @@ class CONV(nn.Module):
                 np.sinc(2*fmax*self.hsupp/self.sample_rate)
             hLow = (2*fmin/self.sample_rate) * \
                 np.sinc(2*fmin*self.hsupp/self.sample_rate)
-            hideal = hHigh - hLow
+            hideal = hHigh - hLow                                                           # g function
 
-            self.band_pass[i, :] = Tensor(np.hamming(
-                self.kernel_size)) * Tensor(hideal)
+            self.band_pass[i, :] = Tensor(np.hamming(self.kernel_size)) * Tensor(hideal)    # hamming window on g function
 
+    # Perform bandpass filter then a convolution layer
     def forward(self, x, mask=False):
         band_pass_filter = self.band_pass.clone().to(x.device)
         if mask:
@@ -431,6 +433,7 @@ class Residual_block(nn.Module):
                                padding=(0, 1),
                                stride=1)
 
+        # If conv1 and conv2 have different input size, downsample it to conv2's output size. (I think this should never run? More like a fail safe, since the code is already written to do that)
         if nb_filts[0] != nb_filts[1]:
             self.downsample = True
             self.conv_downsample = nn.Conv2d(in_channels=nb_filts[0],
@@ -443,8 +446,13 @@ class Residual_block(nn.Module):
             self.downsample = False
         self.mp = nn.MaxPool2d((1, 3))  # self.mp = nn.MaxPool2d((1,4))
 
+    # Structure
+    # If middle/end layer, BatchNorm2d and SELU
+    # Conv2d, BatchNorm2d and SELU
+    # Conv2d, + input (skip connection)
     def forward(self, x):
         identity = x
+        # If it's not the first layer in the structure, perform batch normalization and selu 
         if not self.first:
             out = self.bn1(x)
             out = self.selu(out)
