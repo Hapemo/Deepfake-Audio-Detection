@@ -28,3 +28,11 @@ This file is used to limit the amount of memory and cpu WSL2 use on windows. Cha
 ## Archive
 This command allows you to copy any file or folder in a docker container to your local machine
 docker cp <containerId>:/file/path/within/container /host/path/target
+
+
+# Data Generation
+The data consist of 2 main types, bona fit and spoofed data. Bona fide data are actual real speeches recorded from participants, provided by IMDA. Spoofed data are fake speeches generated using Text-To-Speech (TTS) or [Voice Conversion (VC)](Documentations/Voice_Conversion.md). 
+
+
+
+
