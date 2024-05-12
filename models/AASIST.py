@@ -611,5 +611,10 @@ class Model(nn.Module):
 
         last_hidden = self.drop(last_hidden)
         output = self.out_layer(last_hidden)
+        
+        # relu_output = nn.Softmax(dim=1)(output)
 
+        # print("\nOutput after softmax activation:")
+        # print(f"output: {output}, softmax_output: {relu_output}")  # Non-negative values due to ReLU
+        # print([torch.argmax(softmaxed).item() for softmaxed in nn.Softmax(dim=1)(output)])
         return last_hidden, output

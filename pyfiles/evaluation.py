@@ -3,7 +3,7 @@ import os
 
 import numpy as np
 
-debugPrint = False
+debugPrint = True
 
 def calculate_tDCF_EER(cm_scores_file,
                        asv_score_file,

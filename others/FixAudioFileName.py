@@ -1,12 +1,13 @@
 # This script is written to fix the naming convention of audio files.
 # There are 2 main types of naming that has to be fixed, first is <speaker_name><speaker_id><file_id>.WAV. Second is <speaker_id><file_id>.WAV
 # These file names should be fixed to <speaker_id><file_id>.wav
+# This script also contains function to moves all files in a directory and it's subdirectory into another directory
 
 import os
 import openpyxl
 import shutil
 import sys
-folderName = "C:/Users/jazzt/Desktop/CCA/Deepfake_Audio_Detection/Mangio-RVC-v23.7.0_INFER_TRAIN/Mangio-RVC/opt"
+folderName = "C:/Users/jazzt/Documents/GitHub/Deepfake-Audio-Detection/data/sg_bonafit_speech_part1_1_to_101"
 
 def list_folders_and_files(dir_path, funcPtr): # the function pointer should only take in the file path
     # Loop through all files and directories in the given path
@@ -48,7 +49,7 @@ def FixAudioFileName(filepath):
     os.rename(filepath, dir+"/"+name)
 
 
-# list_folders_and_files(folderName, FixAudioFileName)
+list_folders_and_files(folderName, FixAudioFileName)
 
 
 
@@ -98,7 +99,7 @@ def CopyAllFiles(startingDir, targetDir): # Loop through all folder and obtain t
         else:
             shutil.copy(startingDir+'/'+item, targetDir+'/'+item)
 
-CopyAllFiles("C:/Users/jazzt/Desktop/CCA/Deepfake_Audio_Detection/Mangio-RVC-v23.7.0_INFER_TRAIN/Mangio-RVC/opt", 
-             "C:/Users/jazzt/Desktop/CCA/Deepfake_Audio_Detection/Mangio-RVC-v23.7.0_INFER_TRAIN/Mangio-RVC/opt/Mangio_RVC_spoofed_data")
+# CopyAllFiles("C:/Users/jazzt/Desktop/CCA/Deepfake_Audio_Detection/Mangio-RVC-v23.7.0_INFER_TRAIN/Mangio-RVC/opt", 
+#              "C:/Users/jazzt/Desktop/CCA/Deepfake_Audio_Detection/Mangio-RVC-v23.7.0_INFER_TRAIN/Mangio-RVC/opt/Mangio_RVC_spoofed_data")
 
 

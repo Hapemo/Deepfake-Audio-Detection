@@ -21,16 +21,18 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from torchcontrib.optim import SWA
+from sg_dataloader import sg_get_loader, sg_produce_evaluation_file, sg_calculate_EER, traditional_evaluation
 
 from data_utils import (Dataset_ASVspoof2019_train,
                         Dataset_ASVspoof2019_devNeval, genSpoof_list)
-from evaluation import calculate_tDCF_EER
-from evaluation import calculate_EER
+# from evaluation import calculate_tDCF_EER
+# from evaluation import calculate_EER
 from utils import create_optimizer, seed_worker, set_seed, str_to_bool
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 debugPrint = False
+sgData = True
 
 def main(args: argparse.Namespace) -> None:
     print(args)
@@ -45,7 +47,7 @@ def main(args: argparse.Namespace) -> None:
     optim_config = config["optim_config"]
     optim_config["epochs"] = config["num_epochs"]
     track = config["track"]
-    assert track in ["LA", "PA", "DF"], "Invalid track given"
+    assert track in ["SG", "LA", "PA", "DF"], "Invalid track given"
     if "eval_all_best" not in config:
         config["eval_all_best"] = "True"
     if "freq_aug" not in config:
@@ -58,13 +60,20 @@ def main(args: argparse.Namespace) -> None:
     output_dir = Path(args.output_dir)
     prefix_2019 = "ASVspoof2019.{}".format(track)
     database_path = Path(config["database_path"])
+    # dev_trial_path = None
+    # if sgData: # customize here
+    #     print("dev_trial_path") 
+    # else:
     dev_trial_path = (database_path /
-                      "ASVspoof2019_{}_cm_protocols/{}.cm.dev.trl.txt".format(
-                          track, prefix_2019))
-    eval_trial_path = (
-        database_path /
-        "ASVspoof2019_{}_cm_protocols/{}.cm.eval.trl.txt".format(
-            track, prefix_2019))
+                    "ASVspoof2019_{}_cm_protocols/{}.cm.dev.trl.txt".format(
+                        track, prefix_2019))
+    # eval_trial_path = None
+    # if sgData: # customize here
+    #     print("eval_trial_path")
+    # else:
+    eval_trial_path = (database_path /
+                    "ASVspoof2019_{}_cm_protocols/{}.cm.eval.trl.txt".format(
+                    track, prefix_2019))
 
     if debugPrint:
         print("output_dir")
@@ -88,6 +97,7 @@ def main(args: argparse.Namespace) -> None:
     model_tag = output_dir / model_tag
     model_save_path = model_tag / "weights"
     eval_score_path = model_tag / config["eval_output"]
+    traditional_eval_score_path = model_tag / config["traditional_eval_output"]
     writer = SummaryWriter(model_tag)
     os.makedirs(model_save_path, exist_ok=True)
     copy(args.config, model_tag / "config.conf")
@@ -116,9 +126,9 @@ def main(args: argparse.Namespace) -> None:
         print(model)
 
     # define dataloaders
-    trn_loader, dev_loader, eval_loader = get_loader(
+    trn_loader, dev_loader, eval_loader = sg_get_loader(
         database_path, args.seed, config)
-
+    
     if debugPrint:
         print("trn_loader")
         print(trn_loader)
@@ -133,14 +143,13 @@ def main(args: argparse.Namespace) -> None:
             torch.load(config["model_path"], map_location=device))
         print("Model loaded : {}".format(config["model_path"]))
         print("Start evaluation...")
-        produce_evaluation_file(eval_loader, model, device,
-                                eval_score_path, eval_trial_path)
-        calculate_EER(cm_scores_file=eval_score_path,
+        sg_produce_evaluation_file(eval_loader, model, device, eval_score_path)
+        sg_calculate_EER(cm_scores_file=eval_score_path,
                         #    asv_score_file=database_path /
                         #    config["asv_score_path"],
                            output_file=model_tag / "t-DCF_EER.txt")
         print("DONE.")
-        eval_eer = calculate_EER(
+        eval_eer = sg_calculate_EER(
             cm_scores_file=eval_score_path,
             # asv_score_file=database_path / config["asv_score_path"],
             output_file=model_tag/"loaded_model_t-DCF_EER.txt")
@@ -189,9 +198,11 @@ def main(args: argparse.Namespace) -> None:
             print(running_loss)
         
         
-        produce_evaluation_file(dev_loader, model, device,                                  # Evaluate the model and save it's evaluation result to dev_score.txt on local device
-                                metric_path/"dev_score.txt", dev_trial_path)
-        dev_eer = calculate_EER(                                                            # Calculate the EER based on saved result from dev_score.txt
+        # produce_evaluation_file(dev_loader, model, device,                                  # Evaluate the model and save it's evaluation result to dev_score.txt on local device
+        #                         metric_path/"dev_score.txt", dev_trial_path)
+        sg_produce_evaluation_file(dev_loader, model, device, metric_path/"dev_score.txt")  # Evaluate the model and save it's evaluation result to dev_score.txt on local device
+
+        dev_eer = sg_calculate_EER(                                                            # Calculate the EER based on saved result from dev_score.txt
             cm_scores_file=metric_path/"dev_score.txt",
             # asv_score_file=database_path/config["asv_score_path"],
             output_file=metric_path/"dev_t-DCF_EER_{}epo.txt".format(epoch),
@@ -211,9 +222,9 @@ def main(args: argparse.Namespace) -> None:
 
             # do evaluation whenever best model is renewed
             if str_to_bool(config["eval_all_best"]):
-                produce_evaluation_file(eval_loader, model, device,                         # Evaluate the latest best model found based on evaluation dataset
-                                        eval_score_path, eval_trial_path)
-                eval_eer = calculate_EER(
+                sg_produce_evaluation_file(eval_loader, model, device, eval_score_path)     # Evaluate the latest best model found based on evaluation dataset
+                                        
+                eval_eer = sg_calculate_EER(
                     cm_scores_file=eval_score_path,
                     # asv_score_file=database_path / config["asv_score_path"],
                     output_file=metric_path /
@@ -243,9 +254,9 @@ def main(args: argparse.Namespace) -> None:
     if n_swa_update > 0:
         optimizer_swa.swap_swa_sgd()
         optimizer_swa.bn_update(trn_loader, model, device=device)
-    produce_evaluation_file(eval_loader, model, device, eval_score_path,
-                            eval_trial_path)
-    eval_eer = calculate_EER(cm_scores_file=eval_score_path,
+    sg_produce_evaluation_file(eval_loader, model, device, eval_score_path)
+    traditional_evaluation(eval_loader, model, device, traditional_eval_score_path)
+    eval_eer = sg_calculate_EER(cm_scores_file=eval_score_path,
                                             #  asv_score_file=database_path /
                                             #  config["asv_score_path"],
                                              output_file=model_tag / "t-DCF_EER.txt")
@@ -274,7 +285,6 @@ def get_model(model_config: Dict, device: torch.device):
 
     return model
 
-
 def get_loader(
         database_path: str,
         seed: int,
@@ -297,10 +307,14 @@ def get_loader(
         database_path /
         "ASVspoof2019_{}_cm_protocols/{}.cm.eval.trl.txt".format(
             track, prefix_2019))
+    
 
     d_label_trn, file_train = genSpoof_list(dir_meta=trn_list_path,
                                             is_train=True,
                                             is_eval=False)
+    if debugPrint:
+        print(f"file_train: {file_train}")
+        print(f"d_label_trn: {d_label_trn}")
     print("no. training files:", len(file_train))
 
     train_set = Dataset_ASVspoof2019_train(list_IDs=file_train,
@@ -410,6 +424,7 @@ def train_epoch(
         batch_x = batch_x.to(device)
         batch_y = batch_y.view(-1).type(torch.int64).to(device)
         _, batch_out = model(batch_x, Freq_aug=str_to_bool(config["freq_aug"])) # Doing inference with model
+        # print(f"batch_x: {batch_x}, \nbatch_out: {batch_out}, \nsoftmax:{nn.Softmax(dim=1)(batch_out)}, \nbatch_y: {batch_y}")
         batch_loss = criterion(batch_out, batch_y) # Calculating batch loss
         running_loss += batch_loss.item() * batch_size # Accumulating batch losses
         optim.zero_grad()

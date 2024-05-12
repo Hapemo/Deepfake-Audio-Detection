@@ -28,13 +28,13 @@ def genSpoof_list(dir_meta, is_train=False, is_eval=False):
             #key = line.strip()
             file_list.append(key)
         return file_list
+    
     else:
         for line in l_meta:
             _, key, _, _, label = line.strip().split(" ")
             file_list.append(key)
             d_meta[key] = 1 if label == "bonafide" else 0
         return d_meta, file_list
-
 
 def pad(x, max_len=64600):
     x_len = x.shape[0]
@@ -97,3 +97,4 @@ class Dataset_ASVspoof2019_devNeval(Dataset):
         X_pad = pad(X, self.cut)
         x_inp = Tensor(X_pad)
         return x_inp, key
+
