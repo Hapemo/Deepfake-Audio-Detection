@@ -12,6 +12,8 @@ from torch import Tensor
 from utils import seed_worker
 import numpy as np
 from evaluation import compute_eer
+from importlib import import_module
+import json
 
 # 12 is the normal number of characters for a bonafide data
 # Returns true when it's spoof
@@ -131,11 +133,11 @@ def genSpoof_list_sg(segmentedFile):
                 state = line
                 continue
             if state == STATES[0]: #eval
-                evalData[line] = int(check_spoof(line))
+                evalData[line] = int(not check_spoof(line))
             elif state == STATES[1]: #dev
-                devData[line] = int(check_spoof(line))
+                devData[line] = int(not check_spoof(line))
             elif state == STATES[2]: #train
-                trainData[line] = int(check_spoof(line))
+                trainData[line] = int(not check_spoof(line))
     return evalData, devData, trainData
 
 def sg_get_loader(
@@ -358,5 +360,62 @@ NPV: {NPV}\n\
 # data_segmenter("data/SG/test", 0.2, 0.2)
 # a, b, c = genSpoof_list_sg("data/SG/test/segment_info.txt")
 
+def batch_predict(
+    datapath,
+    modelpath,
+    configpath,
+    device: torch.device) -> None:
+    """Perform prediction on a dataset and prints out in console"""
+    # Load config
+    with open(configpath, "r") as f_json:
+        config = json.loads(f_json.read())
+    model_config = config["model_config"]
 
+    # Loop through folder and gather information on the data
+    nameList = os.listdir(datapath)
 
+    predict_set = Dataset_SG_devNeval(list_IDs=nameList, base_dir=datapath)
+    predict_loader = DataLoader(predict_set,
+                                batch_size=config["batch_size"],
+                                shuffle=False,
+                                drop_last=False,
+                                pin_memory=True)
+    
+    # Loading Model
+    module = import_module("models.{}".format(model_config["architecture"])) # import the module python file from models folder
+    model = module.Model(model_config).to(device)
+    nb_params = sum([param.view(-1).size()[0] for param in model.parameters()])
+    print("no. model params:{}".format(nb_params))
+    model.load_state_dict(torch.load(modelpath))
+
+    # Evaluation 
+    model.eval()
+    id_list = []
+    actual_list = []
+    predicted_list = []
+    for batch_x, utt_id in predict_loader: # running through a loop with a new batch everytime
+        print(utt_id)
+        batch_x = batch_x.to(device)
+        with torch.no_grad():
+            _, batch_out = model(batch_x) # Inference with new batch every time 
+            # torch.argmax(torch.nn.Softmax(dim=1)(batch_out)).item()
+            predicted = [torch.argmax(softmaxed).item() for softmaxed in torch.nn.Softmax(dim=1)(batch_out)]
+        # add outputs
+        actual_list.extend([0 if check_spoof(id) else 1 for id in utt_id])
+        predicted_list.extend(predicted)
+        id_list.extend(utt_id)
+    
+    # Calculating accuracy
+    accuracy = 0
+    for act, pred in zip(actual_list, predicted_list):
+        if act == pred:
+            accuracy += 1
+    accuracy /= len(actual_list) * 100
+
+    # Printing result
+    print(f"accuracy: {accuracy:.2f}%")
+    for id, pred in zip(id_list, predicted_list):
+        print(f"{id}: {pred}")
+
+device = "cuda" if torch.cuda.is_available() else "cpu"
+batch_predict("./data/SG/predictTest", "exp_result/SG_AASIST-sg_ep10_bs4/weights/best.pth", "exp_result/SG_AASIST-sg_ep10_bs4/config.conf", device=device)
