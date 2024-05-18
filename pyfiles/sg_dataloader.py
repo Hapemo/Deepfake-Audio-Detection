@@ -21,12 +21,11 @@ def check_spoof(filename):
     return len(filename) > 12 
 
 class Dataset_SG_train(Dataset):
-    def __init__(self, list_IDs, labels, base_dir):
+    def __init__(self, list_IDs, labels):
         """self.list_IDs	: list of strings (each string: utt key),
            self.labels      : dictionary (key: utt key, value: label integer)"""
         self.list_IDs = list(list_IDs)
         self.labels = labels
-        self.base_dir = base_dir
         self.cut = 64600  # take ~4 sec audio (64600 samples)
 
     def __len__(self):
@@ -34,18 +33,17 @@ class Dataset_SG_train(Dataset):
 
     def __getitem__(self, index):
         key = self.list_IDs[index]
-        X, _ = sf.read(os.path.join(self.base_dir, key))
+        X, _ = sf.read(key)
         X_pad = pad_random(X, self.cut)
         x_inp = Tensor(X_pad)
         y = self.labels[key]
         return x_inp, y
 
 class Dataset_SG_devNeval(Dataset):
-    def __init__(self, list_IDs, base_dir):
+    def __init__(self, list_IDs):
         """self.list_IDs	: list of strings (each string: utt key),
         """
         self.list_IDs = list(list_IDs)
-        self.base_dir = base_dir
         self.cut = 64600  # take ~4 sec audio (64600 samples)
 
     def __len__(self):
@@ -53,10 +51,10 @@ class Dataset_SG_devNeval(Dataset):
 
     def __getitem__(self, index):
         key = self.list_IDs[index]
-        X, _ = sf.read(os.path.join(self.base_dir, key))
+        X, _ = sf.read(key)
         X_pad = pad(X, self.cut)
         x_inp = Tensor(X_pad)
-        return x_inp, key
+        return x_inp, os.path.basename(key)
     
 
 # spoofed data would look something like this 001701010010115.wav, bonafide will look something like this, 01010115.wav
@@ -69,7 +67,9 @@ def data_segmenter(dataPath, evalRatio, devRatio):
     # Loop through all the data, keep track of the number of spoofed and bonafide data, add them to a container accordingly.
     bonafide = []
     spoofed = []
-    for item in os.listdir(dataPath):
+    # config to stop
+    items = random.shuffle(os.listdir(dataPath))
+    for item in items:
         if ".wav" not in item.lower():
             continue
         if check_spoof(item): # 12 is the normal number of characters for a bonafide data
@@ -104,9 +104,9 @@ def data_segmenter(dataPath, evalRatio, devRatio):
     random.shuffle(train)
 
     # Writing it to the output file
-    eval = [line + '\n' for line in eval]
-    dev = [line + '\n' for line in dev]
-    train = [line + '\n' for line in train]
+    eval = [os.path.join(dataPath, line) + '\n' for line in eval]
+    dev = [os.path.join(dataPath, line) + '\n' for line in dev]
+    train = [os.path.join(dataPath, line) + '\n' for line in train]
     eval.insert(0,"eval\n")
     dev.insert(0,"dev\n")
     train.insert(0,"train\n")
@@ -119,6 +119,110 @@ def data_segmenter(dataPath, evalRatio, devRatio):
 
 # data_segmenter("C:/Users/jazzt/Desktop/CCA/Deepfake_Audio_Detection/Mangio-RVC-v23.7.0_INFER_TRAIN/Mangio-RVC/opt/Mangio_RVC_spoofed_data",
 #                0.2, 0.2)
+
+def find_folders(path, collectedList):
+    """
+    Recursively finds and adds all subfolder names to result_list.
+    
+    Args:
+    target_folder (str): The name of the target folder to find.
+    path (str): The current directory path to search in.
+    result_list (list): The list to store subfolder names.
+    """
+    print(f"Adding everything in {path}")
+    for root, dirs, files in os.walk(path):
+        for file in files:
+            collectedList.append(os.path.join(root, file))
+        for folder_name in dirs:
+            folder_path = os.path.join(root, folder_name)
+            # Recursively search in subfolders
+            find_folders(folder_path, collectedList)
+        # No need to continue once we've traversed the target directory
+        break
+
+def AddTargetedFiles(target_folders: list, path: str, collectedList: list, blacklist_folders: list):
+    """
+    Recursively searches for the target folder and its subfolders.
+    
+    Args:
+    target_folders (list): The name of the target folder to find.
+    path (str): The current directory path to search in.
+    result_list (list): The list to store subfolder names.
+    """
+    for item in os.listdir(path):
+        if len(target_folders) == 0:
+            return
+        
+        item_path = os.path.join(path, item)
+        if item in blacklist_folders:
+            continue
+        if os.path.isdir(item_path):
+            if item in target_folders:
+                find_folders(item_path, collectedList)
+                target_folders.remove(item)
+            else:
+                print(f"entering folder: {item}")
+                AddTargetedFiles(target_folders, item_path, collectedList, blacklist_folders)
+
+def PrintDataStats(title, data):
+    spoofCount = 0
+    for name in data:
+        name = os.path.basename(name)
+        if check_spoof(name):
+            spoofCount += 1
+    print(f"{title} spoof count: {spoofCount}")
+    print(f"{title} bonafide count: {len(data) - spoofCount}")
+    print(f"{title} total count: {len(data)}")
+
+# spoofed data would look something like this 001701010010115.wav, bonafide will look something like this, 01010115.wav
+def new_data_segmenter(config): # config["eval_folders"] or database_path or dev_folders or train_folders
+    print("--- segmenting data ---")
+    
+    # Initializing the data path and folders
+    database_path = config["database_path"]
+    eval_folders = config["eval_folders"]
+    dev_folders = config["dev_folders"]
+    train_folders = config["train_folders"]
+    blacklist_folders = config["blacklist_folders"]
+
+    eval_folders = [item.strip() for item in eval_folders.split(',')]
+    dev_folders = [item.strip() for item in dev_folders.split(',')]
+    train_folders = [item.strip() for item in train_folders.split(',')]
+    blacklist_folders = [item.strip() for item in blacklist_folders.split(',')]
+
+    eval_files = []
+    dev_files = []
+    train_files = []
+
+    # Loop through all the data, add relevants ones to train eval and dev
+    AddTargetedFiles(eval_folders, database_path, eval_files, blacklist_folders)
+    AddTargetedFiles(dev_folders, database_path, dev_files, blacklist_folders)
+    AddTargetedFiles(train_folders, database_path, train_files, blacklist_folders)
+
+    # Count the stats of the data
+    PrintDataStats("Eval", eval_files)
+    PrintDataStats("Dev", dev_files)
+    PrintDataStats("Train", train_files)
+
+    # Loop through all the data, keep track of the number of spoofed and bonafide data, add them to a container accordingly.
+    
+    # Open a output file and start writing the names to it. The format will be eval first, followed by dev then train, each section separated by an additional newline.
+    # Extracting the data for eval and dev
+
+    eval_files = [line + '\n' for line in eval_files]
+    dev_files = [line + '\n' for line in dev_files]
+    train_files = [line + '\n' for line in train_files]
+
+    # Writing it to the output file
+    eval_files.insert(0,"eval\n")
+    dev_files.insert(0,"dev\n")
+    train_files.insert(0,"train\n")
+    
+    filename = "segment_info.txt"
+    with open (os.path.join(database_path, filename), 'w') as outputFile:
+        outputFile.writelines(eval_files)
+        outputFile.writelines(dev_files)
+        outputFile.writelines(train_files)
 
 
 def genSpoof_list_sg(segmentedFile):
@@ -133,11 +237,11 @@ def genSpoof_list_sg(segmentedFile):
                 state = line
                 continue
             if state == STATES[0]: #eval
-                evalData[line] = int(not check_spoof(line))
+                evalData[line] = int(not check_spoof(os.path.basename(line)))
             elif state == STATES[1]: #dev
-                devData[line] = int(not check_spoof(line))
+                devData[line] = int(not check_spoof(os.path.basename(line)))
             elif state == STATES[2]: #train
-                trainData[line] = int(not check_spoof(line))
+                trainData[line] = int(not check_spoof(os.path.basename(line)))
     return evalData, devData, trainData
 
 def sg_get_loader(
@@ -145,39 +249,19 @@ def sg_get_loader(
         seed: int,
         config: dict) -> List[torch.utils.data.DataLoader]:
     """Make PyTorch DataLoaders for train / developement / evaluation"""
-    # track = config["track"]
-    # prefix_2019 = "ASVspoof2019.{}".format(track)
-
-    # trn_database_path = database_path / "ASVspoof2019_{}_train/".format(track)
-    # dev_database_path = database_path / "ASVspoof2019_{}_dev/".format(track)
-    # eval_database_path = database_path / "ASVspoof2019_{}_eval/".format(track)
-
-    # trn_list_path = (database_path /
-    #                  "ASVspoof2019_{}_cm_protocols/{}.cm.train.trn.txt".format(
-    #                      track, prefix_2019))
-    # dev_trial_path = (database_path /
-    #                   "ASVspoof2019_{}_cm_protocols/{}.cm.dev.trl.txt".format(
-    #                       track, prefix_2019))
-    # eval_trial_path = (
-    #     database_path /
-    #     "ASVspoof2019_{}_cm_protocols/{}.cm.eval.trl.txt".format(
-    #         track, prefix_2019))
-
-    # d_label_trn, file_train = genSpoof_list(dir_meta=trn_list_path,
-    #                                         is_train=True,
-    #                                         is_eval=False)
-    # print("no. training files:", len(file_train))
 
     segmentInfoPath = os.path.join(database_path, "segment_info.txt")
     # Generate a segment info file if it does not exist
     if not os.path.exists(segmentInfoPath):
-        data_segmenter(database_path, 0.2, 0.2) # Should change the ratio according to config, TODO
+        if bool(int(config["use_new_fileloader"])):
+            new_data_segmenter(config)
+        else:
+            data_segmenter(database_path, 0.2, 0.2) # Should change the ratio according to config, TODO
     
     evalData, devData, trainData = genSpoof_list_sg(segmentInfoPath)
 
     train_set = Dataset_SG_train(list_IDs=trainData.keys(),
-                                 labels=trainData,
-                                 base_dir=database_path)
+                                 labels=trainData)
     gen = torch.Generator()
     gen.manual_seed(seed)
     trn_loader = DataLoader(train_set,
@@ -188,24 +272,14 @@ def sg_get_loader(
                             worker_init_fn=seed_worker,
                             generator=gen)
 
-    # _, file_dev = genSpoof_list(dir_meta=dev_trial_path,
-    #                             is_train=False,
-    #                             is_eval=False)
-    # print("no. validation files:", len(file_dev))
-
-    dev_set = Dataset_SG_devNeval(list_IDs=devData.keys(),
-                                  base_dir=database_path)
+    dev_set = Dataset_SG_devNeval(list_IDs=devData.keys())
     dev_loader = DataLoader(dev_set,
                             batch_size=config["batch_size"],
                             shuffle=False,
                             drop_last=False,
                             pin_memory=True)
 
-    # file_eval = genSpoof_list(dir_meta=eval_trial_path,
-    #                           is_train=False,
-    #                           is_eval=True)
-    eval_set = Dataset_SG_devNeval(list_IDs=evalData.keys(),
-                                   base_dir=database_path)
+    eval_set = Dataset_SG_devNeval(list_IDs=evalData.keys())
     eval_loader = DataLoader(eval_set,
                              batch_size=config["batch_size"],
                              shuffle=False,
@@ -217,10 +291,6 @@ def sg_get_loader(
 def sg_calculate_EER(cm_scores_file,
                     output_file,
                     printout=True):
-    # Replace CM scores with your own scores or provide score file as the
-    # first argument.
-    # cm_scores_file =  'score_cm.txt'
-
     # Load CM scores
     cm_data = np.genfromtxt(cm_scores_file, dtype=str)
     # cm_utt_id = cm_data[:, 0]
@@ -417,5 +487,5 @@ def batch_predict(
     for id, pred in zip(id_list, predicted_list):
         print(f"{id}: {pred}")
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
-batch_predict("./data/SG/predictTest", "exp_result/SG_AASIST-sg_ep10_bs4/weights/best.pth", "exp_result/SG_AASIST-sg_ep10_bs4/config.conf", device=device)
+# device = "cuda" if torch.cuda.is_available() else "cpu"
+# batch_predict("./data/SG/predictTest", "exp_result/SG_AASIST-sg_ep10_bs4/weights/best.pth", "exp_result/SG_AASIST-sg_ep10_bs4/config.conf", device=device)
