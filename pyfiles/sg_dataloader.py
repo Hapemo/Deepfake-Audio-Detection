@@ -174,6 +174,15 @@ def PrintDataStats(title, data):
     print(f"{title} bonafide count: {len(data) - spoofCount}")
     print(f"{title} total count: {len(data)}")
 
+def RemoveSameTargetSource(dataset: list):
+    temp = dataset.copy()
+    for data in dataset:
+        name = os.path.basename(data)
+        if check_spoof(name) and (name[0:4] == name[4:8]):
+            temp.remove(data)
+    return temp
+
+
 # spoofed data would look something like this 001701010010115.wav, bonafide will look something like this, 01010115.wav
 def new_data_segmenter(config): # config["eval_folders"] or database_path or dev_folders or train_folders
     print("--- segmenting data ---")
@@ -198,6 +207,12 @@ def new_data_segmenter(config): # config["eval_folders"] or database_path or dev
     AddTargetedFiles(eval_folders, database_path, eval_files, blacklist_folders)
     AddTargetedFiles(dev_folders, database_path, dev_files, blacklist_folders)
     AddTargetedFiles(train_folders, database_path, train_files, blacklist_folders)
+
+    # Remove same target source speaker for VC spoof data
+    if config["remove_same_source_target_speaker"]:
+        eval_files = RemoveSameTargetSource(eval_files)
+        dev_files = RemoveSameTargetSource(dev_files)
+        train_files = RemoveSameTargetSource(train_files)
 
     # Count the stats of the data
     PrintDataStats("Eval", eval_files)
