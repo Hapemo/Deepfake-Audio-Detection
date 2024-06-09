@@ -351,6 +351,7 @@ def sg_produce_evaluation_file(
     model.eval()
     fname_list = []
     score_list = []
+    dataCount = 0
     for batch_x, utt_id in data_loader: # running through a loop with a new batch everytime
         batch_x = batch_x.to(device)
         with torch.no_grad():
@@ -359,6 +360,8 @@ def sg_produce_evaluation_file(
         # add outputs
         fname_list.extend(utt_id)
         score_list.extend(batch_score.tolist()) # Append the scores of a batch to the master score list
+        dataCount += len(utt_id)
+        print(f"Eval {dataCount} data finished")
 
     # if debugPrint:
     #     print("fname_list")
@@ -383,6 +386,7 @@ def traditional_evaluation(
     model.eval()
     actual_list = []
     predicted_list = []
+    dataCount = 0
     for batch_x, utt_id in data_loader: # running through a loop with a new batch everytime
         batch_x = batch_x.to(device)
         with torch.no_grad():
@@ -392,6 +396,8 @@ def traditional_evaluation(
         # add outputs
         actual_list.extend([0 if check_spoof(id) else 1 for id in utt_id])
         predicted_list.extend(predicted)
+        dataCount += len(utt_id)
+        print(f"Eval {dataCount} data finished")
     
     # False positive, false negative, true positive, true negative
     TP = 0

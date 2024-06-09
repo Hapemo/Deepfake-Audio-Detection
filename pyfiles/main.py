@@ -144,11 +144,12 @@ def main(args: argparse.Namespace) -> None:
         print("Model loaded : {}".format(config["model_path"]))
         print("Start evaluation...")
         sg_produce_evaluation_file(eval_loader, model, device, eval_score_path)
+        #traditional_evaluation(eval_loader, model, device, traditional_eval_score_path)
         sg_calculate_EER(cm_scores_file=eval_score_path,
                         #    asv_score_file=database_path /
                         #    config["asv_score_path"],
                            output_file=model_tag / "t-DCF_EER.txt")
-        print("DONE.")
+        # print("DONE.")
         eval_eer = sg_calculate_EER(
             cm_scores_file=eval_score_path,
             # asv_score_file=database_path / config["asv_score_path"],
