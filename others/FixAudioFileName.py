@@ -6,8 +6,9 @@
 import os
 import openpyxl
 import shutil
+import random
 import sys
-folderName = "C:/Users/jazzt/Documents/GitHub/Deepfake-Audio-Detection/data/sg_bonafit_speech_part1_1_to_101"
+folderName = "C:/Users/jazzt/Desktop/CCA/Deepfake_Audio_Detection/Mangio-RVC-v23.7.0_INFER_TRAIN/Mangio-RVC/opt/New_folder"
 
 def list_folders_and_files(dir_path, funcPtr): # the function pointer should only take in the file path
     # Loop through all files and directories in the given path
@@ -29,7 +30,7 @@ def FixAudioFileName(filepath):
         return
     dir, name = os.path.split(filepath)
     
-    # fix first error
+    # fix first error, removing SPEAKER<number>
     if (not name[0].isdigit()):
         name = name[11:]
         
@@ -41,35 +42,38 @@ def FixAudioFileName(filepath):
         wavOccurance-=1
     name = name + ".wav"
 
-    # fix third error, where there are more than 8 digits in the number
-    if len(name) > 12:
-        name = name[1:]
+    # # fix third error, where there are more than 8 digits in the number
+    # if len(name) > 12:
+    #     name = name[1:]
     
     print(dir+"/"+name)
     os.rename(filepath, dir+"/"+name)
 
-
 list_folders_and_files(folderName, FixAudioFileName)
 
+# SET THE VC MODEL ID HERE
+VC_id = 0
 
-
-def SetSpoofedDataName(startingPath):
+# Converts a spoof data with bonafide naming to spoof naming
+def SetSpoofedDataName(startingPath): 
     pitchTable = ExcelSheetToTable(startingPath + "/voice_adjustment.xlsx")
+    print(pitchTable)
     print(startingPath + "/voice_adjustment.xlsx")
     for subfolder in os.listdir(startingPath):
         if not os.path.isdir(startingPath+'/'+subfolder):
             print(subfolder)
             continue
         # Get the full path of the item
-        VCmodel_id = subfolder[7:11]
+        target_id = subfolder[-4:]
         for fromFolder in os.listdir(startingPath+'/'+subfolder):
-            target_id = fromFolder[-4:]
+            source_id = fromFolder[-4:]
             for name in os.listdir(startingPath+'/'+subfolder+'/'+fromFolder):
-                newname = VCmodel_id + name
-                newname = newname[:8] + pitchTable[VCmodel_id][target_id] + newname[8:]
-                print(newname)
-
-                os.rename(startingPath+'/'+subfolder+'/'+fromFolder+'/'+name, 
+                newname = target_id + name
+                newname = newname[:8] + pitchTable[target_id][source_id] + f"{VC_id:02}" + newname[8:]
+                # print(newname)
+                # print(startingPath+'/'+subfolder+'/'+fromFolder+'/'+name, " -> ",
+                #           startingPath+'/'+subfolder+'/'+fromFolder+'/'+newname)
+                os.rename(startingPath+'/'+subfolder+'/'+fromFolder+'/'+name,
                           startingPath+'/'+subfolder+'/'+fromFolder+'/'+newname)
 
 def ExcelSheetToTable(excelSheetPath): # converting excelsheet to a 2d array, 
@@ -77,7 +81,7 @@ def ExcelSheetToTable(excelSheetPath): # converting excelsheet to a 2d array,
     
     table = {}
     # Loop through row and make new dictionary
-    for row_num in range(2, 12):
+    for row_num in range(2, 9):
         VC_id = sheet.cell(row = row_num, column = 1).value
         table[VC_id] = {}
         for col_num in range(2,10):
@@ -85,8 +89,21 @@ def ExcelSheetToTable(excelSheetPath): # converting excelsheet to a 2d array,
             table[VC_id][target_id] = sheet.cell(row = row_num, column = col_num).value
     return table
 
+# Add vc model id only
+def AddingVCModelID(filepath):
+    if filepath[-3:].lower() != "wav":
+        print(f"{filepath} is not a wav file")
+        return
+    
+    dir, name = os.path.split(filepath)
+
+    newname = name[:11] + f"{VC_id:02}" + name[11:]
+    # print(filepath, "->", dir+"/"+newname)
+    os.rename(filepath, dir+"/"+newname)
+# list_folders_and_files(folderName, AddingVCModelID)
+
 # ExcelSheetToTable("C:/Users/jazzt/Desktop/CCA/Deepfake_Audio_Detection/Mangio-RVC-v23.7.0_INFER_TRAIN/Mangio-RVC/opt/voice_adjustment.xlsx")
-# SetSpoofedDataName("C:/Users/jazzt/Desktop/CCA/Deepfake_Audio_Detection/Mangio-RVC-v23.7.0_INFER_TRAIN/Mangio-RVC/opt")
+# SetSpoofedDataName("C:/Users/jazzt/Desktop/CCA/Deepfake_Audio_Detection/Mangio-RVC-v23.7.0_INFER_TRAIN/Mangio-RVC/opt/New_folder")
 
 sys.setrecursionlimit(100000)
 def CopyAllFiles(startingDir, targetDir): # Loop through all folder and obtain the files in all of them, then copy to a designated folder
@@ -102,4 +119,42 @@ def CopyAllFiles(startingDir, targetDir): # Loop through all folder and obtain t
 # CopyAllFiles("C:/Users/jazzt/Desktop/CCA/Deepfake_Audio_Detection/Mangio-RVC-v23.7.0_INFER_TRAIN/Mangio-RVC/opt", 
 #              "C:/Users/jazzt/Desktop/CCA/Deepfake_Audio_Detection/Mangio-RVC-v23.7.0_INFER_TRAIN/Mangio-RVC/opt/Mangio_RVC_spoofed_data")
 
+
+# Changing LA naming convention to SG
+if 0:
+    metapath = "./data/LA/LA/ASVspoof2019_LA_cm_protocols/ASVspoof2019.LA.cm.dev.trl.txt"
+    oldfolderPath = "./data/LA/LA/ASVspoof2019_LA_dev/flac"
+    newfolderPath = "./data/newLA/LAdev/"
+
+    with open(metapath, "r") as file:
+        for line in file:
+            info = line.split(' ')
+            name = info[1]
+            if 'bonafide' in info[4]:
+                name = name[5:]
+            shutil.copy(os.path.join(oldfolderPath, info[1] + ".flac"),
+                        os.path.join(newfolderPath, name + ".wav"))
+
+# Changing LA naming convention to SG, for ASVspoof2021 data, all will be used for eval
+if 0:
+    metapath = "./data/ASV2021/keys/DF/CM/trial_metadata.txt"
+    oldfolderPath = "./data/ASV2021/ASVspoof2021_DF_eval/flac"
+    newfolderPath = "./data/ASV2021/ASVspoof2021_DF_eval/flac"
+
+    bonafideCount = 0
+    spoofCount = 0
+
+    with open(metapath, "r") as file:
+        for line in file:
+            info = line.split(' ')
+            name = info[1]
+            if 'bonafide' in info[5]:
+                name = name[5:]
+                bonafideCount += 1
+            else:
+                spoofCount += 1
+            # os.rename(os.path.join(oldfolderPath, info[1] + ".flac"),
+            #           os.path.join(newfolderPath, name + ".wav"))
+        print(f"bonafideCount: {bonafideCount}")
+        print(f"spoofCount: {spoofCount}")
 
