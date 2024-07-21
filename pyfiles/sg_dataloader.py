@@ -448,6 +448,50 @@ NPV: {NPV}\n\
 ")
     print("Scores saved to {}".format(save_path))
 
+def predict(
+    dataPath: str,
+    model,
+    device: torch.device) -> None:
+    """Perform a traditional evaluation and save the score to a file"""
+    # Evaluation 
+    model.eval()
+
+    # Load in data
+    X, _ = sf.read(dataPath)
+    X_pad = pad(X, 64600) # take ~4 sec audio (64600 samples)
+    x_inp = Tensor([X_pad])
+    print("X: ", type(X))
+    print("X_pad: ", type(X_pad))
+    print("x_inp: ", type(x_inp))
+    print("x_inp: ", x_inp.shape)
+    
+    print("X: ", X)
+    print("X_pad: ", X_pad)
+    print("x_inp: ", x_inp)
+
+    x_inp = x_inp.to(device)
+    pred = "Error"
+    with torch.no_grad():
+        _, batch_out = model(x_inp) # Inference with new batch every time 
+        # torch.argmax(torch.nn.Softmax(dim=1)(batch_out)).item()
+        val1 = torch.nn.Softmax(dim=1)(batch_out)
+        pred = torch.argmax(val1).item()
+        print("val1: ", val1)
+        print("pred: ", pred)
+    return pred
+
+    # for batch_x, utt_id in data_loader: # running through a loop with a new batch everytime
+    #     batch_x = batch_x.to(device)
+    #     with torch.no_grad():
+    #         _, batch_out = model(batch_x) # Inference with new batch every time 
+    #         # torch.argmax(torch.nn.Softmax(dim=1)(batch_out)).item()
+    #         predicted = [torch.argmax(softmaxed).item() for softmaxed in torch.nn.Softmax(dim=1)(batch_out)]
+    #     # add outputs
+    #     actual_list.extend([0 if check_spoof(id) else 1 for id in utt_id])
+    #     predicted_list.extend(predicted)
+    #     dataCount += len(utt_id)
+    #     print(f"Eval {dataCount} data finished")
+
 # data_segmenter("data/SG/test", 0.2, 0.2)
 # a, b, c = genSpoof_list_sg("data/SG/test/segment_info.txt")
 
