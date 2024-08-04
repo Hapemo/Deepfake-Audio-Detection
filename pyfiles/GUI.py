@@ -49,7 +49,7 @@ def main():
         live=True                           # Enable live mode
     )
     
-    interface.launch(share = True)
+    interface.launch(share = True, server_port = 7860)
 
 
 if __name__ == '__main__':

@@ -1,20 +1,16 @@
 version: '1'
 name: sit-aasist
 services:
-  deepfake-audio-detection-gui:
-    container_name: deepfake-audio-detection-gui
+  deepfake-audio-detection-deployment:
+    container_name: deepfake-audio-detection-deployment
     build:
       context: .
-      dockerfile: ./docker/Dockerfile
+      dockerfile: ./Dockerfile
     tty: true
     volumes:
-      - ./data/:/app/data
-      - ./notebooks/:/app/notebooks
-      - ./output/:/app/output
-      - ./pyfiles/:/app/pyfiles
-      - ./config/:/app/config
-      - ./models/:/app/models
-      - ./exp_result/:/app/exp_result
+      - ./:/app/
+      - ./models/:/app/models/
+      - ./audio/:/app/audio/
     deploy:
       resources:
         reservations:
