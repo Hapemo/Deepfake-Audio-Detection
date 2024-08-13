@@ -77,18 +77,6 @@ class Dataset_SG_devNeval(Dataset):
         self.audioDuration = 4
         self.cut = 64600  # take ~4 sec audio (64600 samples)
 
-        # Silero on all audio
-        if True:
-            print("1")
-            wav = SileroVAD.VAD("./data/SPEAKER0001/00010001.wav")
-            print("2")
-            for key in self.list_IDs:
-                print("3")
-                wav = SileroVAD.VAD(key)
-                # X_pad = pad(wav.numpy(), self.cut)
-                sf.write(key, np.ravel(wav), self.sampleRate)
-
-
     def __len__(self):
         return len(self.list_IDs)
 
@@ -318,16 +306,6 @@ def sg_get_loader(
             data_segmenter(database_path, 0.2, 0.2) # Should change the ratio according to config, TODO
     
     evalData, devData, trainData = genSpoof_list_sg(segmentInfoPath)
-
-    if True:
-        print("1")
-        wav = SileroVAD.VAD("./data/SPEAKER0001/00010001.wav")
-        print("2")
-        for key in evalData.keys():
-            print("3")
-            wav = SileroVAD.VAD(key)
-            X_pad = pad(wav.numpy(), 64600)
-            sf.write(key, X_pad, self.sampleRate)
     
     train_set = Dataset_SG_train(list_IDs=trainData.keys(),
                                  labels=trainData)

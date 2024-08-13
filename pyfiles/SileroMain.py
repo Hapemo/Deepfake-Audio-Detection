@@ -28,24 +28,31 @@ def main():
   new_data_segmenter(config)
 
   # run Silero vad on all the files extracted
+  counter = 0
   with open(segmentInfoPath, "r") as file:
     for line in file:
       if ".wav" not in line:
         continue
 
-      line = line.rstrip('\n')
-      wav = SileroVAD.VAD(line, SAMPLERATE)
+      counter += 1
+      if counter % 100 == 0:
+        print("Count: ", counter)
+      try:
+        line = line.rstrip('\n')
+        wav = SileroVAD.VAD(line, SAMPLERATE)
 
-      # If you want to change the file path name before saving then do it here
-      line = line.replace("/data", "/data/SileroVAD")
+        # If you want to change the file path name before saving then do it here
+        line = line.replace("/data", "/data/SileroVAD")
 
-      dirPath = os.path.dirname(line)
-      if not os.path.exists(dirPath):
-        os.makedirs(dirPath)
-        print("dirPath created: ", dirPath)
-      #---------------------------------------------------------
+        dirPath = os.path.dirname(line)
+        if not os.path.exists(dirPath):
+          os.makedirs(dirPath)
+          print("dirPath created: ", dirPath)
+        #---------------------------------------------------------
 
-      sf.write(line, np.ravel(wav), SAMPLERATE)
+        sf.write(line, np.ravel(wav), SAMPLERATE)
+      except Exception as e:
+        print(e)
 
   
 
