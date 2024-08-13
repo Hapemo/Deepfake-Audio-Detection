@@ -33,4 +33,4 @@ EXPOSE 6006
 EXPOSE 7860
 
 # Command to run the application
-CMD ["python", "GUI.py"]
+CMD ["jupyter lab"]

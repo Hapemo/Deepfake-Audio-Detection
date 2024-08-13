@@ -14,11 +14,39 @@ import numpy as np
 from evaluation import compute_eer
 from importlib import import_module
 import json
+from silero_vad import read_audio, collect_chunks, get_speech_timestamps, load_silero_vad
 
 # 12 is the normal number of characters for a bonafide data
 # Returns true when it's spoof
 def check_spoof(filename):
     return len(filename) > 12 
+
+class SileroVAD:
+    model = None
+    USE_ONNX = False # change this to True if you want to test onnx model
+
+    @staticmethod
+    def LoadModel():
+        if SileroVAD.model == None:
+            print("loading silero model")
+            SileroVAD.model = load_silero_vad(onnx=SileroVAD.USE_ONNX)
+    
+    @staticmethod
+    def VAD(filepath: str, samplingRate = 16000, savefile = False):
+        """ Load in the audio file from filepath, perform VAD on it and return numpy array of it """
+        print("vad start")
+        SileroVAD.LoadModel()
+
+        wav = read_audio(filepath, sampling_rate=samplingRate)
+        # get speech timestamps from full audio file
+        speech_timestamps = get_speech_timestamps(wav, SileroVAD.model, sampling_rate=samplingRate)
+        
+        wav = collect_chunks(speech_timestamps, wav).unsqueeze(0)
+
+        print("vad end")
+
+        return wav
+    
 
 class Dataset_SG_train(Dataset):
     def __init__(self, list_IDs, labels):
@@ -32,6 +60,7 @@ class Dataset_SG_train(Dataset):
         return len(self.list_IDs)
 
     def __getitem__(self, index):
+
         key = self.list_IDs[index]
         X, _ = sf.read(key)
         X_pad = pad_random(X, self.cut)
@@ -44,7 +73,21 @@ class Dataset_SG_devNeval(Dataset):
         """self.list_IDs	: list of strings (each string: utt key),
         """
         self.list_IDs = list(list_IDs)
+        self.sampleRate = 16000
+        self.audioDuration = 4
         self.cut = 64600  # take ~4 sec audio (64600 samples)
+
+        # Silero on all audio
+        if True:
+            print("1")
+            wav = SileroVAD.VAD("./data/SPEAKER0001/00010001.wav")
+            print("2")
+            for key in self.list_IDs:
+                print("3")
+                wav = SileroVAD.VAD(key)
+                # X_pad = pad(wav.numpy(), self.cut)
+                sf.write(key, np.ravel(wav), self.sampleRate)
+
 
     def __len__(self):
         return len(self.list_IDs)
@@ -54,6 +97,7 @@ class Dataset_SG_devNeval(Dataset):
         X, _ = sf.read(key)
         X_pad = pad(X, self.cut)
         x_inp = Tensor(X_pad)
+
         return x_inp, os.path.basename(key)
     
 
@@ -275,16 +319,28 @@ def sg_get_loader(
     
     evalData, devData, trainData = genSpoof_list_sg(segmentInfoPath)
 
+    if True:
+        print("1")
+        wav = SileroVAD.VAD("./data/SPEAKER0001/00010001.wav")
+        print("2")
+        for key in evalData.keys():
+            print("3")
+            wav = SileroVAD.VAD(key)
+            X_pad = pad(wav.numpy(), 64600)
+            sf.write(key, X_pad, self.sampleRate)
+    
     train_set = Dataset_SG_train(list_IDs=trainData.keys(),
                                  labels=trainData)
+    
     gen = torch.Generator()
     gen.manual_seed(seed)
+
     trn_loader = DataLoader(train_set,
                             batch_size=config["batch_size"],
                             shuffle=True,
                             drop_last=True,
                             pin_memory=True,
-                            worker_init_fn=seed_worker,
+                            worker_init_fn=seed_worker, 
                             generator=gen)
 
     dev_set = Dataset_SG_devNeval(list_IDs=devData.keys())

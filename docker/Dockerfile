@@ -11,4 +11,4 @@ RUN pip install -r /app/requirements.txt
 
 ENV PYTHONPATH="${PYTHONPATH}:/app"
 
-CMD ["python", "GUI.py"]
+CMD ["jupyter lab"]

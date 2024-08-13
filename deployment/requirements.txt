@@ -6,3 +6,4 @@ jupyterlab
 jupyter_contrib_nbextensions
 tensorboard
 gradio
+silero-vad

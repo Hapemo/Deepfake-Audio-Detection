@@ -21,7 +21,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from torchcontrib.optim import SWA
-from sg_dataloader import sg_get_loader, sg_produce_evaluation_file, sg_calculate_EER, traditional_evaluation
+from sg_dataloader import sg_get_loader, sg_produce_evaluation_file, sg_calculate_EER, traditional_evaluation, SileroVAD
 
 from data_utils import (Dataset_ASVspoof2019_train,
                         Dataset_ASVspoof2019_devNeval, genSpoof_list)
@@ -128,7 +128,7 @@ def main(args: argparse.Namespace) -> None:
     # define dataloaders
     trn_loader, dev_loader, eval_loader = sg_get_loader(
         database_path, args.seed, config)
-    
+
     if debugPrint:
         print("trn_loader")
         print(trn_loader)

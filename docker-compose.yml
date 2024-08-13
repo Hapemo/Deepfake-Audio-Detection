@@ -1,8 +1,8 @@
 version: '1'
 name: sit-aasist
 services:
-  deepfake-audio-detection-gui:
-    container_name: deepfake-audio-detection-gui
+  deepfake-audio-detection:
+    container_name: deepfake-audio-detection
     build:
       context: .
       dockerfile: ./docker/Dockerfile
@@ -28,4 +28,4 @@ services:
         - "$GRADIO_SERVER_PORT:$GRADIO_SERVER_PORT"
     env_file:
      - ./.env
-    entrypoint: python GUI.py
+    entrypoint: jupyter lab --ip 0.0.0.0 --port=$JUPYTER_PORT --no-browser --allow-root
