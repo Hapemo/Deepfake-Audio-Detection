@@ -34,7 +34,6 @@ class SileroVAD:
     @staticmethod
     def VAD(filepath: str, samplingRate = 16000, savefile = False):
         """ Load in the audio file from filepath, perform VAD on it and return numpy array of it """
-        print("vad start")
         SileroVAD.LoadModel()
 
         wav = read_audio(filepath, sampling_rate=samplingRate)
@@ -42,9 +41,6 @@ class SileroVAD:
         speech_timestamps = get_speech_timestamps(wav, SileroVAD.model, sampling_rate=samplingRate)
         
         wav = collect_chunks(speech_timestamps, wav).unsqueeze(0)
-
-        print("vad end")
-
         return wav
     
 
