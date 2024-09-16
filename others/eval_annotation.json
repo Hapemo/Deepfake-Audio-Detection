@@ -1,0 +1,32 @@
+{
+    "00090099-040076": {
+        "file_path": "./data/predictTest/00090099-040076.wav",
+        "duration": 5.146,
+        "key": "spoof"
+    },
+    "00090099-040077": {
+        "file_path": "./data/predictTest/00090099-040077.wav",
+        "duration": 2.486,
+        "key": "spoof"
+    },
+    "00090099-040078": {
+        "file_path": "./data/predictTest/00090099-040078.wav",
+        "duration": 3.958,
+        "key": "spoof"
+    },
+    "00590218": {
+        "file_path": "./data/predictTest/00590218.wav",
+        "duration": 4.79,
+        "key": "bonafide"
+    },
+    "00590219": {
+        "file_path": "./data/predictTest/00590219.wav",
+        "duration": 1.914,
+        "key": "bonafide"
+    },
+    "00590220": {
+        "file_path": "./data/predictTest/00590220.wav",
+        "duration": 2.49,
+        "key": "bonafide"
+    }
+}
