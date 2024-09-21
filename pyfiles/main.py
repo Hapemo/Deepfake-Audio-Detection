@@ -21,7 +21,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from torchcontrib.optim import SWA
-from sg_dataloader import sg_get_loader, sg_produce_evaluation_file, sg_calculate_EER, traditional_evaluation, SileroVAD
+from sg_dataloader import sg_get_loader, sg_produce_evaluation_file, sg_calculate_EER, traditional_evaluation
 
 from data_utils import (Dataset_ASVspoof2019_train,
                         Dataset_ASVspoof2019_devNeval, genSpoof_list)
@@ -278,7 +278,7 @@ def main(args: argparse.Namespace) -> None:
 
 def get_model(model_config: Dict, device: torch.device):
     """Define DNN model architecture"""
-    module = import_module("../models.{}".format(model_config["architecture"])) # import the module python file from models folder
+    module = import_module("models.{}".format(model_config["architecture"])) # import the module python file from models folder
     _model = getattr(module, "Model") # Get the Model class from the imported module
     model = _model(model_config).to(device)
     nb_params = sum([param.view(-1).size()[0] for param in model.parameters()])
