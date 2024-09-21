@@ -278,7 +278,7 @@ def main(args: argparse.Namespace) -> None:
 
 def get_model(model_config: Dict, device: torch.device):
     """Define DNN model architecture"""
-    module = import_module("models.{}".format(model_config["architecture"])) # import the module python file from models folder
+    module = import_module("../models.{}".format(model_config["architecture"])) # import the module python file from models folder
     _model = getattr(module, "Model") # Get the Model class from the imported module
     model = _model(model_config).to(device)
     nb_params = sum([param.view(-1).size()[0] for param in model.parameters()])
