@@ -2,8 +2,4 @@ torch>=1.6.0
 torchcontrib
 numpy
 soundfile
-jupyterlab
-jupyter_contrib_nbextensions
 tensorboard
-gradio
-silero-vad
