@@ -3,6 +3,7 @@
 import os
 import random
 import math
+from re import L
 from typing import List
 import soundfile as sf
 from torch.utils.data import DataLoader, Dataset
@@ -14,35 +15,11 @@ import numpy as np
 from evaluation import compute_eer
 from importlib import import_module
 import json
-from silero_vad import read_audio, collect_chunks, get_speech_timestamps, load_silero_vad
 
 # 12 is the normal number of characters for a bonafide data
 # Returns true when it's spoof
 def check_spoof(filename):
     return len(filename) > 12 
-
-class SileroVAD:
-    model = None
-    USE_ONNX = False # change this to True if you want to test onnx model
-
-    @staticmethod
-    def LoadModel():
-        if SileroVAD.model == None:
-            print("loading silero model")
-            SileroVAD.model = load_silero_vad(onnx=SileroVAD.USE_ONNX)
-    
-    @staticmethod
-    def VAD(filepath: str, samplingRate = 16000, savefile = False):
-        """ Load in the audio file from filepath, perform VAD on it and return numpy array of it """
-        SileroVAD.LoadModel()
-
-        wav = read_audio(filepath, sampling_rate=samplingRate)
-        # get speech timestamps from full audio file
-        speech_timestamps = get_speech_timestamps(wav, SileroVAD.model, sampling_rate=samplingRate)
-        
-        wav = collect_chunks(speech_timestamps, wav).unsqueeze(0)
-        return wav
-    
 
 class Dataset_SG_train(Dataset):
     def __init__(self, list_IDs, labels):
@@ -56,7 +33,6 @@ class Dataset_SG_train(Dataset):
         return len(self.list_IDs)
 
     def __getitem__(self, index):
-
         key = self.list_IDs[index]
         X, _ = sf.read(key)
         X_pad = pad_random(X, self.cut)
@@ -69,8 +45,6 @@ class Dataset_SG_devNeval(Dataset):
         """self.list_IDs	: list of strings (each string: utt key),
         """
         self.list_IDs = list(list_IDs)
-        self.sampleRate = 16000
-        self.audioDuration = 4
         self.cut = 64600  # take ~4 sec audio (64600 samples)
 
     def __len__(self):
@@ -81,7 +55,6 @@ class Dataset_SG_devNeval(Dataset):
         X, _ = sf.read(key)
         X_pad = pad(X, self.cut)
         x_inp = Tensor(X_pad)
-
         return x_inp, os.path.basename(key)
     
 
@@ -302,19 +275,17 @@ def sg_get_loader(
             data_segmenter(database_path, 0.2, 0.2) # Should change the ratio according to config, TODO
     
     evalData, devData, trainData = genSpoof_list_sg(segmentInfoPath)
-    
+
     train_set = Dataset_SG_train(list_IDs=trainData.keys(),
                                  labels=trainData)
-    
     gen = torch.Generator()
     gen.manual_seed(seed)
-
     trn_loader = DataLoader(train_set,
                             batch_size=config["batch_size"],
                             shuffle=True,
                             drop_last=True,
                             pin_memory=True,
-                            worker_init_fn=seed_worker, 
+                            worker_init_fn=seed_worker,
                             generator=gen)
 
     dev_set = Dataset_SG_devNeval(list_IDs=devData.keys())
@@ -490,14 +461,6 @@ def predict(
     X, _ = sf.read(dataPath)
     X_pad = pad(X, 64600) # take ~4 sec audio (64600 samples)
     x_inp = Tensor([X_pad])
-    print("X: ", type(X))
-    print("X_pad: ", type(X_pad))
-    print("x_inp: ", type(x_inp))
-    print("x_inp: ", x_inp.shape)
-    
-    print("X: ", X)
-    print("X_pad: ", X_pad)
-    print("x_inp: ", x_inp)
 
     x_inp = x_inp.to(device)
     pred = "Error"
@@ -510,20 +473,27 @@ def predict(
         print("pred: ", pred)
     return pred
 
-    # for batch_x, utt_id in data_loader: # running through a loop with a new batch everytime
-    #     batch_x = batch_x.to(device)
-    #     with torch.no_grad():
-    #         _, batch_out = model(batch_x) # Inference with new batch every time 
-    #         # torch.argmax(torch.nn.Softmax(dim=1)(batch_out)).item()
-    #         predicted = [torch.argmax(softmaxed).item() for softmaxed in torch.nn.Softmax(dim=1)(batch_out)]
-    #     # add outputs
-    #     actual_list.extend([0 if check_spoof(id) else 1 for id in utt_id])
-    #     predicted_list.extend(predicted)
-    #     dataCount += len(utt_id)
-    #     print(f"Eval {dataCount} data finished")
+def custom_predict(speech, model, device: torch.device, audioLength = 4, sampleRate = 16000) -> None:
+    """Perform a traditional evaluation and save the score to a file"""
+    # Evaluation 
+    model.eval()
 
-# data_segmenter("data/SG/test", 0.2, 0.2)
-# a, b, c = genSpoof_list_sg("data/SG/test/segment_info.txt")
+    # Load in data
+    if type(speech) == str: X, sampleRate = sf.read(speech)
+    else: X = speech
+    
+    X_pad = pad(X, audioLength * sampleRate) # take ~4 sec audio (64600 samples)
+    x_inp = Tensor([X_pad])
+
+    x_inp = x_inp.to(device)
+    pred = "Error"
+    with torch.no_grad():
+        _, batch_out = model(x_inp) # Inference with new batch every time 
+        # torch.argmax(torch.nn.Softmax(dim=1)(batch_out)).item()
+        val1 = torch.nn.Softmax(dim=1)(batch_out)
+        pred = torch.argmax(val1).item()
+    return pred
+
 
 def batch_predict(
     datapath,
