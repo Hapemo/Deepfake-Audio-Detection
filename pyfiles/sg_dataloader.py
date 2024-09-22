@@ -22,12 +22,12 @@ def check_spoof(filename):
     return len(filename) > 12 
 
 class Dataset_SG_train(Dataset):
-    def __init__(self, list_IDs, labels):
+    def __init__(self, list_IDs, labels, sample_rate = 64600):
         """self.list_IDs	: list of strings (each string: utt key),
            self.labels      : dictionary (key: utt key, value: label integer)"""
         self.list_IDs = list(list_IDs)
         self.labels = labels
-        self.cut = 64600  # take ~4 sec audio (64600 samples)
+        self.cut = sample_rate  # take ~4 sec audio (64600 samples)
 
     def __len__(self):
         return len(self.list_IDs)
@@ -41,11 +41,11 @@ class Dataset_SG_train(Dataset):
         return x_inp, y
 
 class Dataset_SG_devNeval(Dataset):
-    def __init__(self, list_IDs):
+    def __init__(self, list_IDs, samples = 64600):
         """self.list_IDs	: list of strings (each string: utt key),
         """
         self.list_IDs = list(list_IDs)
-        self.cut = 64600  # take ~4 sec audio (64600 samples)
+        self.cut = samples  # take ~4 sec audio (64600 samples)
 
     def __len__(self):
         return len(self.list_IDs)
@@ -277,7 +277,8 @@ def sg_get_loader(
     evalData, devData, trainData = genSpoof_list_sg(segmentInfoPath)
 
     train_set = Dataset_SG_train(list_IDs=trainData.keys(),
-                                 labels=trainData)
+                                 labels=trainData, 
+                                 sample_rate=int(config["model_config"]["nb_samp"]))
     gen = torch.Generator()
     gen.manual_seed(seed)
     trn_loader = DataLoader(train_set,
@@ -288,14 +289,14 @@ def sg_get_loader(
                             worker_init_fn=seed_worker,
                             generator=gen)
 
-    dev_set = Dataset_SG_devNeval(list_IDs=devData.keys())
+    dev_set = Dataset_SG_devNeval(list_IDs=devData.keys(), samples=int(config["model_config"]["nb_samp"]))
     dev_loader = DataLoader(dev_set,
                             batch_size=config["batch_size"],
                             shuffle=False,
                             drop_last=False,
                             pin_memory=True)
 
-    eval_set = Dataset_SG_devNeval(list_IDs=evalData.keys())
+    eval_set = Dataset_SG_devNeval(list_IDs=evalData.keys(), samples=int(config["model_config"]["nb_samp"]))
     eval_loader = DataLoader(eval_set,
                              batch_size=config["batch_size"],
                              shuffle=False,
