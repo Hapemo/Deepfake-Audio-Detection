@@ -154,6 +154,7 @@ def main(args: argparse.Namespace) -> None:
             cm_scores_file=eval_score_path,
             # asv_score_file=database_path / config["asv_score_path"],
             output_file=model_tag/"loaded_model_t-DCF_EER.txt")
+        print(f"Eval EER: {eval_eer}")
         sys.exit(0)
 
     # get optimizer and scheduler
@@ -261,6 +262,7 @@ def main(args: argparse.Namespace) -> None:
                                             #  asv_score_file=database_path /
                                             #  config["asv_score_path"],
                                              output_file=model_tag / "t-DCF_EER.txt")
+    print(f"Eval EER: {eval_eer}")
     f_log = open(model_tag / "metric_log.txt", "a")
     f_log.write("=" * 5 + "\n")
     f_log.write("EER: {:.3f}".format(eval_eer))
