@@ -275,7 +275,7 @@ def main(args: argparse.Namespace) -> None:
         best_eval_eer = eval_eer
         torch.save(model.state_dict(),
             model_save_path / "best.pth")
-    print("Exp FIN. EER: {:.3f}".format(best_eval_eer))
+    print("Best Eval EER recorded: {:.3f}".format(best_eval_eer))
 
 
 def get_model(model_config: Dict, device: torch.device):
