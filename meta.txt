@@ -1,0 +1,6 @@
+- 00090099-040076 - - - spoof - progress
+- 00090099-040077 - - - spoof - progress
+- 00090099-040078 - - - spoof - progress
+- 00590218 - - - bonafide - progress
+- 00590219 - - - bonafide - progress
+- 00590220 - - - bonafide - progress
